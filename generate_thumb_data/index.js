@@ -4,6 +4,8 @@ const path = require('path');
 const fs = require('fs-extra');
 const os = require('os');
 const sharp = require('sharp');
+const getExif = require('exif-async');
+const parseDMS = require('parse-dms');
 
 // Entry point function
 exports.generate_thumb_data = async (file, context) => {
@@ -67,9 +69,43 @@ exports.generate_thumb_data = async (file, context) => {
 
     // Delete the temp working directory and its files from the GCF's VM
     await fs.remove(workingDir);
+
+    // Use exif-async and parse-dms libraries
+    try {
+      // Read EXIF data from the downloaded image file
+      let exifData = await readExifData(tempFilePath);
+
+      // Convert latitude and longitude from EXIF into decimal numbers
+      let gpsDecimal = getGPSCoordinates(exifData);
+
+      // Log the latitude and longitude to the console
+      console.log(`Latitude: ${gpsDecimal.lat}`);
+      console.log(`Longitude: ${gpsDecimal.lon}`);
+    } catch (error) {
+      console.error('Error reading EXIF data:', error);
+    }
   }
 
   // Delete the original file uploaded to the "Uploads" bucket
   await sourceBucket.file(gcsFile.name).delete();
   console.log(`Deleted uploaded file: ${gcsFile.name}`);
 };
+
+// Helper Functions
+async function readExifData(localFile) {
+  let exifData;
+  try {
+    exifData = await getExif(localFile);
+    return exifData.gps;
+  } catch (err) {
+    console.log(err);
+    return null;
+  }
+}
+
+function getGPSCoordinates(g) {
+  const latString = `${g.GPSLatitude[0]}:${g.GPSLatitude[1]}:${g.GPSLatitude[2]}${g.GPSLatitudeRef}`;
+  const lonString = `${g.GPSLongitude[0]}:${g.GPSLongitude[1]}:${g.GPSLongitude[2]}${g.GPSLongitudeRef}`;
+  const degCoords = parseDMS(`${latString} ${lonString}`);
+  return degCoords;
+}
