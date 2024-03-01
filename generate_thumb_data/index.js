@@ -91,6 +91,19 @@ exports.generate_thumb_data = async (file, context) => {
   console.log(`Deleted uploaded file: ${gcsFile.name}`);
 };
 
+//Entry Point Function 
+async function extractExif() {
+  let gpsObject = await readExifData('china1.jpeg');
+  console.log(gpsObject);
+  let gpsDecimal = getGPSCoordinates(gpsObject);
+  console.log(gpsDecimal);
+  console.log(gpsDecimal.lat);
+  console.log(gpsDecimal.lon);
+}
+
+//Call the Entry Point (not needed in GCF)
+extractExif();
+
 // Helper Functions
 async function readExifData(localFile) {
   let exifData;
@@ -108,4 +121,29 @@ function getGPSCoordinates(g) {
   const lonString = `${g.GPSLongitude[0]}:${g.GPSLongitude[1]}:${g.GPSLongitude[2]}${g.GPSLongitudeRef}`;
   const degCoords = parseDMS(`${latString} ${lonString}`);
   return degCoords;
+}
+
+// Function to write to Firestore
+async function writeToFirestore(dataObject) {
+  const firestore = new Firestore({
+    projectId: "sp24-41200-mwhitte-globaljags",
+    // Add other Firestore configurations as needed
+  });
+
+      // Create a dummy object for demo purposes 
+      let dataObject = {};
+
+      // Add some key: value pairs 
+      dataObject.thumbURL = "";
+      dataObject.imageURL = "";
+      dataObject.latitude = "";
+      dataObject.logitude = "";
+  
+      console.log(`The dataObject: `);
+      console.log(dataObject);
+
+  // Write the object into Firestore
+  const collectionRef = firestore.collection('photos');
+  const documentRef = await collectionRef.add(dataObject);
+  console.log(`Document created: ${documentRef.id}`);
 }
